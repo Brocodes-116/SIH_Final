@@ -48,7 +48,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Routes with rate limiting
 app.use('/api/auth', authRateLimit, require('./routes/authRoutes'));
 app.use('/api/tourists', generalRateLimit, require('./routes/touristRoutes'));
-app.use('/api/sos', sosRateLimit, require('./routes/sosRoutes'));
+// Apply granular rate limits inside sosRoutes so GET listing isn't throttled
+app.use('/api/sos', require('./routes/sosRoutes'));
 app.use('/api/position', positionRateLimit, require('./routes/positionRoutes'));
 app.use('/api/geofencing', geofencingRateLimit, require('./routes/geofencingRoutes'));
 app.use('/api/privacy', generalRateLimit, require('./routes/privacyRoutes'));

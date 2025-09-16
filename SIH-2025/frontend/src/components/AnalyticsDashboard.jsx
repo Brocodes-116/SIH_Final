@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { touristAPI } from '../services/api';
 
 // Fix for default markers in react-leaflet
 delete Icon.Default.prototype._getIconUrl;
@@ -35,6 +36,8 @@ const AnalyticsDashboard = ({ onClose }) => {
   });
   const [mapCenter, setMapCenter] = useState([28.6139, 77.2090]);
   const [mapZoom, setMapZoom] = useState(13);
+  const [tourists, setTourists] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Fetch analytics data
   const fetchAnalyticsData = async () => {
@@ -91,6 +94,38 @@ const AnalyticsDashboard = ({ onClose }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fetch tourists once for suggestions
+  useEffect(() => {
+    const loadTourists = async () => {
+      try {
+        const resp = await touristAPI.getAllTourists();
+        setTourists(resp.tourists || []);
+      } catch (e) {
+        // non-fatal
+      }
+    };
+    loadTourists();
+  }, []);
+
+  const filteredSuggestions = useMemo(() => {
+    const q = (filters.userId || '').toLowerCase().trim();
+    if (!q) return [];
+    return (tourists || [])
+      .filter(t => (t.name || '').toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [filters.userId, tourists]);
+
+  const handleSelectSuggestion = (tourist) => {
+    const userId = tourist.userId || tourist.id || tourist._id;
+    setFilters(prev => ({ ...prev, userId: userId }));
+    // Center map to tourist location if available
+    if (tourist.location && typeof tourist.location.latitude === 'number' && typeof tourist.location.longitude === 'number') {
+      setMapCenter([tourist.location.latitude, tourist.location.longitude]);
+      setMapZoom(14);
+    }
+    setShowSuggestions(false);
   };
 
   // Handle filter changes
@@ -187,15 +222,31 @@ const AnalyticsDashboard = ({ onClose }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">User ID (for paths)</label>
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-1">User ID / Search Name</label>
               <input
                 type="text"
                 value={filters.userId}
-                onChange={(e) => handleFilterChange('userId', e.target.value)}
-                placeholder="Enter user ID"
+                onChange={(e) => { handleFilterChange('userId', e.target.value); setShowSuggestions(true); }}
+                placeholder="Type name to search or paste user ID"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               />
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
+                  {filteredSuggestions.map((t) => (
+                    <button
+                      key={(t.userId && (t.userId._id || t.userId)) || t._id || t.id}
+                      onClick={() => handleSelectSuggestion(t)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                    >
+                      <div className="font-medium text-gray-900">{t.name}</div>
+                      <div className="text-xs text-gray-500">ID: {(t.userId && (t.userId._id || t.userId)) || t._id || t.id}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-end">
               <button

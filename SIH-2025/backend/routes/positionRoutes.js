@@ -68,8 +68,16 @@ router.get('/live', auth, async (req, res) => {
       });
     }
 
-    const positions = await redisClient.hGetAll('live_positions');
-    const livePositions = Object.values(positions).map(pos => JSON.parse(pos));
+    // Gracefully handle when Redis is not connected by returning empty positions
+    let livePositions = [];
+    try {
+      const positions = await redisClient.hGetAll('live_positions');
+      livePositions = Object.values(positions).map(pos => JSON.parse(pos));
+    } catch (e) {
+      // If Redis is closed/unavailable, return empty list instead of 500
+      console.log('Live positions unavailable (Redis not connected)');
+      livePositions = [];
+    }
 
     res.json({
       success: true,

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon, useMapEvents } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import { QRCodeSVG } from 'qrcode.react';
 import { touristAPI, sosAPI } from '../services/api';
@@ -38,6 +38,21 @@ const TouristDashboard = ({ user, onLogout }) => {
   const [touristProfile, setTouristProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [zones, setZones] = useState({ restricted: [], safe: [] });
+
+  // Ensure SOS button is enabled when (re)entering the dashboard or refocusing tab
+  useEffect(() => {
+    setSosTriggered(false);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        setSosTriggered(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Tourist ID for QR code
   const touristId = touristProfile?.userId || user?.id || "TOURIST_12345_DELHI_2024";
@@ -79,6 +94,36 @@ const TouristDashboard = ({ user, onLogout }) => {
 
     initializeTouristProfile();
   }, [user]);
+
+  // Fetch geofencing zones for display
+  useEffect(() => {
+    const fetchZones = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:5001/api/geofencing/zones', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        if (data.success) setZones(data.zones);
+      } catch (e) {
+        // non-fatal for tourist display
+      }
+    };
+    fetchZones();
+    // Periodically refresh zones and on tab focus
+    const interval = setInterval(fetchZones, 15000);
+    const onVisible = () => { if (!document.hidden) fetchZones(); };
+    const onStorage = (e) => { if (e.key === 'zones_last_updated') fetchZones(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   // Real-time location updates every 30 seconds
   useEffect(() => {
@@ -276,6 +321,21 @@ const TouristDashboard = ({ user, onLogout }) => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
+                  {/* Render authority-created zones */}
+                  {zones.restricted.map((zone) => (
+                    <Polygon
+                      key={`r-${zone.id}`}
+                      positions={zone.coordinates.map(c => [c[1], c[0]])}
+                      pathOptions={{ color: '#EF4444', fillColor: '#EF4444', fillOpacity: 0.2, weight: 2 }}
+                    />
+                  ))}
+                  {zones.safe.map((zone) => (
+                    <Polygon
+                      key={`s-${zone.id}`}
+                      positions={zone.coordinates.map(c => [c[1], c[0]])}
+                      pathOptions={{ color: '#10B981', fillColor: '#10B981', fillOpacity: 0.2, weight: 2 }}
+                    />
+                  ))}
                   
                   {/* Tourist current location marker */}
                   <Marker position={touristLocation}>
@@ -387,19 +447,18 @@ const TouristDashboard = ({ user, onLogout }) => {
               <div className="flex flex-col items-center">
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <QRCodeSVG
-                    value={touristId}
+                    value={`ID:${touristId}|NAME:${user?.name}|EMAIL:${user?.email}|LOC:${touristLocation[0].toFixed(5)},${touristLocation[1].toFixed(5)}`}
                     size={120}
                     level="M"
                     includeMargin={true}
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-3 text-center">
-                  {/* {t('dashboard.qrScanInfo')} */}
-                  QR Code to scan for your digital ID
-                </p>
-                <p className="text-xs text-gray-400 mt-1 text-center font-mono">
-                  ID: {touristId}
-                </p>
+                <div className="text-xs text-gray-600 mt-3 text-center space-y-1">
+                  <p><span className="font-semibold">Name:</span> {user?.name}</p>
+                  <p><span className="font-semibold">Email:</span> {user?.email}</p>
+                  <p><span className="font-semibold">Digital ID:</span> {touristId}</p>
+                  <p><span className="font-semibold">Current Location:</span> {touristLocation[0].toFixed(5)}, {touristLocation[1].toFixed(5)}</p>
+                </div>
               </div>
             </div>
 

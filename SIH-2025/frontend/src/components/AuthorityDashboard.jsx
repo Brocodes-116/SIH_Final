@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import { Icon } from 'leaflet';
@@ -7,8 +7,9 @@ import { touristAPI, sosAPI } from '../services/api';
 import { positionAPI } from '../services/api';
 import socketService from '../services/socketService';
 import GeofencingManager from './GeofencingManager';
-import AnalyticsDashboard from './AnalyticsDashboard';
+const AnalyticsDashboard = lazy(() => import('./AnalyticsDashboard'));
 import 'leaflet/dist/leaflet.css';
+import { Polygon } from 'react-leaflet';
 
 // Fix for default markers in react-leaflet
 delete Icon.Default.prototype._getIconUrl;
@@ -49,6 +50,9 @@ const AuthorityDashboard = ({ user, onLogout }) => {
   const [alerts, setAlerts] = useState([]);
   const [showGeofencingManager, setShowGeofencingManager] = useState(false);
   const [showAnalyticsDashboard, setShowAnalyticsDashboard] = useState(false);
+  const [zones, setZones] = useState({ restricted: [], safe: [] });
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const modalOpenRef = useRef(false);
 
   // Refs for tracking
   const mapRef = useRef(null);
@@ -125,7 +129,9 @@ const AuthorityDashboard = ({ user, onLogout }) => {
       console.log('🚨 Alert received:', alertData);
       setAlerts(prev => [...prev, alertData]);
       // Immediately refresh backend data so SOS list/map updates without manual refresh
-      fetchData();
+      if (!modalOpenRef.current && !isFetchingRef.current) {
+        fetchData();
+      }
       
       // Show browser notification if permission granted
       if (Notification.permission === 'granted') {
@@ -172,9 +178,14 @@ const AuthorityDashboard = ({ user, onLogout }) => {
   /**
    * Fetch initial data from backend
    */
+  // Prevent overlapping fetches
+  const isFetchingRef = useRef(false);
   const fetchData = async () => {
     try {
-      setIsLoading(true);
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      // Only show full-screen loading during first bootstrap
+      if (isBootstrapping) setIsLoading(true);
       setError(null);
       
       console.log('Fetching data from backend...');
@@ -182,15 +193,18 @@ const AuthorityDashboard = ({ user, onLogout }) => {
       // Always fetch from backend
 
       // Fetch tourists and SOS alerts; live positions only if not demo mode
-      const [touristsResponse, sosResponse, positionsResponse] = await Promise.all([
+      const token = localStorage.getItem('token');
+      const [touristsResponse, sosResponse, positionsResponse, zonesResponse] = await Promise.all([
         touristAPI.getAllTourists(),
         sosAPI.getAllSOS(),
-        positionAPI.getLivePositions().catch(() => ({ positions: [] }))
+        positionAPI.getLivePositions().catch(() => ({ positions: [] })),
+        fetch('http://localhost:5001/api/geofencing/zones', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => ({}))
       ]);
       
       console.log('Tourists response:', touristsResponse);
       console.log('SOS response:', sosResponse);
       console.log('Live positions response:', positionsResponse);
+      console.log('Zones response:', zonesResponse);
       
       // Use real data from backend
       const realTourists = touristsResponse.tourists || [];
@@ -240,13 +254,22 @@ const AuthorityDashboard = ({ user, onLogout }) => {
 
       setTourists(touristsFinal);
       setSosAlerts(realSOSAlerts);
+      if (zonesResponse && zonesResponse.success && zonesResponse.zones) {
+        setZones(zonesResponse.zones);
+      }
       setLastUpdate(new Date());
       
     } catch (error) {
       console.error('Error fetching data:', error);
+      // Soft surface the error once
+      // Reduce noise: only show a brief, single-line error without spamming alerts
       setError('Failed to fetch data. Please try again.');
     } finally {
-      setIsLoading(false);
+      isFetchingRef.current = false;
+      if (isBootstrapping) {
+        setIsLoading(false);
+        setIsBootstrapping(false);
+      }
     }
   };
 
@@ -344,7 +367,8 @@ const AuthorityDashboard = ({ user, onLogout }) => {
 
   // Initialize on mount
   useEffect(() => {
-    fetchData();
+    let cancelled = false;
+    const debounced = setTimeout(() => { if (!cancelled) fetchData(); }, 150);
     initializeSocket();
     requestNotificationPermission();
 
@@ -365,10 +389,10 @@ const AuthorityDashboard = ({ user, onLogout }) => {
     const token = localStorage.getItem('token') || '';
     const isDemoMode = token.startsWith('mock_token') || sessionStorage.getItem('authority_demo') === '1';
     const refreshInterval = setInterval(() => {
-      if (!isDemoMode) {
+      if (!isDemoMode && !isFetchingRef.current && !showAnalyticsDashboard && !showGeofencingManager) {
         fetchData();
       }
-    }, 10000);
+    }, 12000);
 
     // Check connection status periodically
     const connectionInterval = setInterval(() => {
@@ -378,11 +402,18 @@ const AuthorityDashboard = ({ user, onLogout }) => {
 
     return () => {
       clearInterval(connectionInterval);
+      clearTimeout(debounced);
+      cancelled = true;
       clearTimeout(watchAllTimeout);
       clearInterval(refreshInterval);
       socketService.disconnect();
     };
   }, [initializeSocket]);
+
+  // Keep a ref of whether a modal is open to avoid heavy work during modals
+  useEffect(() => {
+    modalOpenRef.current = showAnalyticsDashboard || showGeofencingManager;
+  }, [showAnalyticsDashboard, showGeofencingManager]);
 
   // Get geofence warnings (tourists outside safe zones)
   const geofenceWarnings = tourists.filter(tourist => tourist.geofenceStatus === 'outside');
@@ -391,6 +422,7 @@ const AuthorityDashboard = ({ user, onLogout }) => {
   useEffect(() => {
     const mapInstance = mapRef.current;
     if (!mapInstance) return;
+    if (showAnalyticsDashboard || showGeofencingManager) return; // skip autofit while modals open
     const validLocations = tourists
       .map(t => t.location)
       .filter(loc => Array.isArray(loc) && loc.length === 2 && Number.isFinite(loc[0]) && Number.isFinite(loc[1]));
@@ -416,7 +448,7 @@ const AuthorityDashboard = ({ user, onLogout }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-100">
       {/* Loading State */}
-      {isLoading && (
+      {isLoading && !showAnalyticsDashboard && !showGeofencingManager && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
             <svg className="animate-spin h-6 w-6 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -497,6 +529,21 @@ const AuthorityDashboard = ({ user, onLogout }) => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
+                  {/* Render authority-created zones on authority map */}
+                  {zones.restricted.map((zone) => (
+                    <Polygon
+                      key={`r-${zone.id}`}
+                      positions={zone.coordinates.map(c => [c[1], c[0]])}
+                      pathOptions={{ color: '#EF4444', fillColor: '#EF4444', fillOpacity: 0.2, weight: 2 }}
+                    />
+                  ))}
+                  {zones.safe.map((zone) => (
+                    <Polygon
+                      key={`s-${zone.id}`}
+                      positions={zone.coordinates.map(c => [c[1], c[0]])}
+                      pathOptions={{ color: '#10B981', fillColor: '#10B981', fillOpacity: 0.2, weight: 2 }}
+                    />
+                  ))}
                   
                   {/* Tourist markers with real-time updates */}
                   {tourists.map((tourist) => {
@@ -687,41 +734,21 @@ const AuthorityDashboard = ({ user, onLogout }) => {
                 ⚡ Quick Actions
               </h3>
               <div className="space-y-2">
+                
                 <button 
-                  onClick={() => {
-                    tourists.forEach(tourist => {
-                      const userId = tourist.userId || tourist.id;
-                      if (!watchingUsers.has(userId)) {
-                        startWatching(userId);
-                      }
-                    });
-                  }}
-                  className="w-full py-2 px-4 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
-                >
-                  👁️ Watch All Tourists
-                </button>
-                <button 
-                  onClick={() => {
-                    watchingUsers.forEach(userId => stopWatching(userId));
-                  }}
-                  className="w-full py-2 px-4 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition-colors"
-                >
-                  👁️‍🗨️ Stop Watching All
-                </button>
-                <button 
-                  onClick={fetchData}
+                  onClick={() => { if (!isFetchingRef.current) fetchData(); }}
                   className="w-full py-2 px-4 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors"
                 >
                   🔄 Refresh Data
                 </button>
                 <button 
-                  onClick={() => setShowGeofencingManager(true)}
+                  onClick={() => { if (!showGeofencingManager) setShowGeofencingManager(true); }}
                   className="w-full py-2 px-4 bg-purple-100 text-purple-800 rounded-lg hover:bg-purple-200 transition-colors"
                 >
                   🚧 Manage Geofencing
                 </button>
                 <button 
-                  onClick={() => setShowAnalyticsDashboard(true)}
+                  onClick={() => { if (!showAnalyticsDashboard) setShowAnalyticsDashboard(true); }}
                   className="w-full py-2 px-4 bg-indigo-100 text-indigo-800 rounded-lg hover:bg-indigo-200 transition-colors"
                 >
                   📊 Analytics Dashboard
@@ -739,7 +766,19 @@ const AuthorityDashboard = ({ user, onLogout }) => {
 
       {/* Analytics Dashboard Modal */}
       {showAnalyticsDashboard && (
-        <AnalyticsDashboard onClose={() => setShowAnalyticsDashboard(false)} />
+        <Suspense fallback={
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
+              <svg className="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-gray-700">Loading analytics...</span>
+            </div>
+          </div>
+        }>
+          <AnalyticsDashboard onClose={() => setShowAnalyticsDashboard(false)} />
+        </Suspense>
       )}
     </div>
   );

@@ -16,16 +16,45 @@ export default function App() {
   const [userType, setUserType] = useState(null); // 'tourist' or 'authority'
   const { t } = useTranslation();
 
-  // Always start at portal selection (landing index)
+  // Initialize from storage to persist session and last view across refreshes
   useEffect(() => {
-    setCurrentView('portal-select');
+    try {
+      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token');
+      const storedView = localStorage.getItem('currentView');
+      if (storedUser && storedToken) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        const detectedType = parsedUser?.role === 'authority' ? 'authority' : 'tourist';
+        setUserType(detectedType);
+        if (storedView && ['tourist-dashboard','authority-dashboard'].includes(storedView)) {
+          setCurrentView(storedView);
+        } else {
+          setCurrentView(detectedType === 'authority' ? 'authority-dashboard' : 'tourist-dashboard');
+        }
+        return;
+      }
+      // If not logged in, restore last non-auth view or default portal
+      const lastView = localStorage.getItem('currentView');
+      setCurrentView(lastView || 'portal-select');
+    } catch {
+      setCurrentView('portal-select');
+    }
   }, []);
+
+  // Persist current view
+  useEffect(() => {
+    if (currentView) {
+      localStorage.setItem('currentView', currentView);
+    }
+  }, [currentView]);
 
   // Handle successful tourist login
   const handleTouristLogin = (userData) => {
     setUser(userData);
     setUserType('tourist');
     setCurrentView('tourist-dashboard');
+    localStorage.setItem('currentView', 'tourist-dashboard');
   };
 
   // Handle successful tourist signup
@@ -40,12 +69,14 @@ export default function App() {
     setUser(userData);
     setUserType('authority');
     setCurrentView('authority-dashboard');
+    localStorage.setItem('currentView', 'authority-dashboard');
   };
 
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('currentView');
     setUser(null);
     setUserType(null);
     setCurrentView('portal-select');

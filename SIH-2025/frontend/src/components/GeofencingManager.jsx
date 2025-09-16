@@ -144,7 +144,9 @@ const GeofencingManager = ({ onClose }) => {
           radius: 1000,
           coordinates: []
         });
-        fetchData(); // Refresh data
+        fetchData(); // Refresh data locally
+        // Also broadcast to other dashboards by nudging their polling via storage event
+        try { localStorage.setItem('zones_last_updated', String(Date.now())); } catch {}
       }
     } catch (error) {
       console.error('Error creating zone:', error);

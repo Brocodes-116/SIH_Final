@@ -8,13 +8,7 @@ const auth = require('../middleware/auth');
  */
 router.get('/zones', auth, async (req, res) => {
   try {
-    // Only authorities can access geofencing data
-    if (req.user.role !== 'authority') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Access denied. Authority role required.' 
-      });
-    }
+    // Tourists should also be able to fetch zones for visualization
 
     // Get socket service instance (this would need to be passed from server.js)
     const socketService = req.app.get('socketService');
