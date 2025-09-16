@@ -117,7 +117,11 @@ const TouristDashboard = ({ user, onLogout }) => {
     try {
       // First, try to get existing tourist profile
       const touristsResponse = await touristAPI.getAllTourists();
-      const existingTourist = touristsResponse.tourists.find(t => t.userId === user.id);
+      const existingTourist = touristsResponse.tourists.find(t => {
+        const populated = t.userId && typeof t.userId === 'object';
+        const touristUserId = populated ? t.userId._id : t.userId;
+        return touristUserId === user.id;
+      });
       
       if (existingTourist) {
         // Update existing tourist location
@@ -205,17 +209,13 @@ const TouristDashboard = ({ user, onLogout }) => {
       const response = await sosAPI.createSOS(sosData);
       
       console.log('🚨 EMERGENCY SOS TRIGGERED!');
-      console.log('SOS Alert ID:', response.sos._id);
-      console.log('Tourist:', user?.name);
-      console.log('Location:', touristLocation);
-      console.log('Timestamp:', new Date().toISOString());
-      
-      // Show success message
-      alert('🚨 Emergency SOS Alert Sent Successfully!\n\nAuthorities have been notified of your location and emergency status.');
+      console.log('SOS Alert ID:', response.sos?._id);
+      alert('🚨 Emergency SOS Alert Sent Successfully!');
       
     } catch (error) {
       console.error('SOS API error:', error);
-      alert('❌ Failed to send SOS alert. Please try again or contact emergency services directly.');
+      const msg = error?.response?.data?.message || 'Failed to send SOS alert. Please try again.';
+      alert(`❌ ${msg}`);
     } finally {
       // Reset SOS button after 5 seconds
       setTimeout(() => {

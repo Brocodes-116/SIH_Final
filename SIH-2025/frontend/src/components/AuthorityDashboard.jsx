@@ -84,6 +84,24 @@ const AuthorityDashboard = ({ user, onLogout }) => {
   };
 
   /**
+   * Update tourist location in real-time
+   */
+  const updateTouristLocation = useCallback((locationData) => {
+    setTourists(prev => prev.map(tourist => {
+      if (tourist.userId === locationData.userId || tourist.id === locationData.userId) {
+        return {
+          ...tourist,
+          location: [locationData.lat, locationData.lon],
+          lastUpdate: locationData.timestamp,
+          accuracy: locationData.accuracy
+        };
+      }
+      return tourist;
+    }));
+    setLastUpdate(new Date());
+  }, []);
+
+  /**
    * Initialize Socket.IO connection
    */
   const initializeSocket = useCallback(() => {
@@ -126,24 +144,6 @@ const AuthorityDashboard = ({ user, onLogout }) => {
   }, [updateTouristLocation]);
 
   /**
-   * Update tourist location in real-time
-   */
-  const updateTouristLocation = useCallback((locationData) => {
-    setTourists(prev => prev.map(tourist => {
-      if (tourist.userId === locationData.userId || tourist.id === locationData.userId) {
-        return {
-          ...tourist,
-          location: [locationData.lat, locationData.lon],
-          lastUpdate: locationData.timestamp,
-          accuracy: locationData.accuracy
-        };
-      }
-      return tourist;
-    }));
-    setLastUpdate(new Date());
-  }, []);
-
-  /**
    * Start watching a specific tourist
    */
   const startWatching = useCallback((userId) => {
@@ -179,15 +179,13 @@ const AuthorityDashboard = ({ user, onLogout }) => {
       
       console.log('Fetching data from backend...');
       
-      // Determine if running in demo mode (mock token)
-      const token = localStorage.getItem('token') || '';
-      const isDemoMode = token.startsWith('mock_token') || sessionStorage.getItem('authority_demo') === '1';
+      // Always fetch from backend
 
       // Fetch tourists and SOS alerts; live positions only if not demo mode
       const [touristsResponse, sosResponse, positionsResponse] = await Promise.all([
         touristAPI.getAllTourists(),
         sosAPI.getAllSOS(),
-        isDemoMode ? Promise.resolve({ positions: [] }) : positionAPI.getLivePositions().catch(() => ({ positions: [] }))
+        positionAPI.getLivePositions().catch(() => ({ positions: [] }))
       ]);
       
       console.log('Tourists response:', touristsResponse);
@@ -388,6 +386,32 @@ const AuthorityDashboard = ({ user, onLogout }) => {
 
   // Get geofence warnings (tourists outside safe zones)
   const geofenceWarnings = tourists.filter(tourist => tourist.geofenceStatus === 'outside');
+
+  // Auto-fit map to show all tourists
+  useEffect(() => {
+    const mapInstance = mapRef.current;
+    if (!mapInstance) return;
+    const validLocations = tourists
+      .map(t => t.location)
+      .filter(loc => Array.isArray(loc) && loc.length === 2 && Number.isFinite(loc[0]) && Number.isFinite(loc[1]));
+    if (validLocations.length === 0) return;
+    try {
+      // Leaflet map instance is under ._leaflet_map in react-leaflet v4 refs
+      const leafletMap = mapInstance;
+      const bounds = validLocations.reduce((acc, [lat, lon]) => {
+        if (!acc) return [[lat, lon], [lat, lon]];
+        return [
+          [Math.min(acc[0][0], lat), Math.min(acc[0][1], lon)],
+          [Math.max(acc[1][0], lat), Math.max(acc[1][1], lon)]
+        ];
+      }, null);
+      if (bounds) {
+        leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+      }
+    } catch (e) {
+      // non-fatal
+    }
+  }, [tourists]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-100">

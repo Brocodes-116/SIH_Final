@@ -27,13 +27,7 @@ const AuthorityLogin = ({ onLogin, onSwitchToTourist }) => {
     }
   };
 
-  // Predefined authority credentials
-  const authorityCredentials = [
-    { email: 'admin@tourist-safety.gov', password: 'Admin!2025_SIH', name: t('authority.admin') },
-    { email: 'police@tourist-safety.gov', password: 'Police!2025_SIH', name: t('authority.police') },
-    { email: 'emergency@tourist-safety.gov', password: 'Emerg3ncy!2025', name: t('authority.emergency') },
-    { email: 'security@tourist-safety.gov', password: 'S3curity!2025', name: t('authority.security') }
-  ];
+  // Removed demo credentials: authority login must go through backend
 
   // Validate form fields
   const validateForm = () => {
@@ -52,12 +46,7 @@ const AuthorityLogin = ({ onLogin, onSwitchToTourist }) => {
     return newErrors;
   };
 
-  // Check if credentials are valid
-  const validateCredentials = (email, password) => {
-    return authorityCredentials.find(
-      cred => cred.email === email && cred.password === password
-    );
-  };
+  // No local credential validation
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -72,54 +61,49 @@ const AuthorityLogin = ({ onLogin, onSwitchToTourist }) => {
     setIsLoading(true);
     
     try {
-      // Try backend API first
-      try {
-        const response = await authAPI.login({
-          ...formData,
-          role: 'authority'
-        });
-        
-        // Store token and user data
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        
-        console.log('Authority login successful:', response.user);
-        onLogin(response.user);
-        return;
-      } catch (apiError) {
-        console.log('Backend API failed, trying local credentials:', apiError.message);
-      }
-      
-      // Fallback to local credentials if backend fails (demo mode)
-      const validCredential = validateCredentials(formData.email, formData.password);
-      
-      if (validCredential) {
-        // Create a mock user object for local login
-        const mockUser = {
-          id: `auth_${Date.now()}`,
-          name: validCredential.name,
-          email: validCredential.email,
-          role: 'authority'
-        };
-        
-        // Persist a mock token so the dashboard can load
-        const mockToken = 'mock_token_authority_' + Date.now();
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        
-        // Mark demo mode
-        sessionStorage.setItem('authority_demo', '1');
-        sessionStorage.setItem('authority_user', JSON.stringify(mockUser));
-        
-        console.log('Authority login successful (local):', validCredential.name);
-        onLogin(mockUser);
-      } else {
-        setErrors({ general: 'Invalid authority credentials. Please check your email and password.' });
-      }
-      
+      // Attempt login first
+      const response = await authAPI.login({ email: formData.email, password: formData.password });
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      onLogin(response.user);
+      return;
     } catch (error) {
-      console.error('Authority login error:', error);
-      setErrors({ general: 'Login failed. Please try again.' });
+      const status = error?.response?.status;
+      const message = error?.response?.data?.message;
+      console.log('Authority login failed:', status, message);
+
+      // If login failed (e.g., user not found), auto-provision an authority user
+      if (status === 401 || status === 404) {
+        try {
+          const name = formData.email.split('@')[0];
+          const signupResp = await authAPI.signup({
+            name,
+            email: formData.email,
+            password: formData.password,
+            role: 'authority'
+          });
+          localStorage.setItem('token', signupResp.token);
+          localStorage.setItem('user', JSON.stringify(signupResp.user));
+          onLogin(signupResp.user);
+          return;
+        } catch (signupErr) {
+          console.error('Authority signup error:', signupErr);
+          // Stop on rate limit
+          if (signupErr?.response?.status === 429) {
+            setErrors({ general: 'Too many authentication attempts. Please wait a minute and try again.' });
+            return;
+          }
+          const msg = signupErr?.response?.data?.message || 'Login failed. Please try again.';
+          setErrors({ general: msg });
+        }
+      } else {
+        if (status === 429) {
+          setErrors({ general: 'Too many authentication attempts. Please wait a minute and try again.' });
+          return;
+        }
+        const msg = message || 'Login failed. Please try again.';
+        setErrors({ general: msg });
+      }
     } finally {
       setIsLoading(false);
     }

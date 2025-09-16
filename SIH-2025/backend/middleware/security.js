@@ -35,10 +35,12 @@ const generalRateLimit = createRateLimit(
   'Too many API requests, please try again later.'
 );
 
-// Authentication rate limiting (stricter)
+// Authentication rate limiting (configurable; more lenient in development)
+const AUTH_WINDOW_MS = parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS || (process.env.NODE_ENV === 'development' ? 60 * 1000 : 15 * 60 * 1000), 10);
+const AUTH_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || (process.env.NODE_ENV === 'development' ? 100 : 5), 10);
 const authRateLimit = createRateLimit(
-  15 * 60 * 1000, // 15 minutes
-  5, // 5 login attempts per window
+  AUTH_WINDOW_MS,
+  AUTH_MAX,
   'Too many authentication attempts, please try again later.'
 );
 
