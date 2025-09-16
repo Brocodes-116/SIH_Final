@@ -1,0 +1,21 @@
+{
+  "name": "mainproject",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "dev": "node index.js",
+  "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shashinarendra/MainProject.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shashinarendra/MainProject/issues"
+  },
+  "homepage": "https://github.com/shashinarendra/MainProject#readme"
+}
