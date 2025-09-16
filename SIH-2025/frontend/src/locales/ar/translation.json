@@ -1,0 +1,33 @@
+{
+  "navbar": {
+    "home": "الرئيسية",
+    "myDashboard": "لوحة التحكم الخاصة بي",
+    "authorityDashboard": "لوحة تحكم السلطة",
+    "tourists": "السياح",
+    "sosAlerts": "تنبيهات الطوارئ",
+    "reports": "التقارير",
+    "about": "حول",
+    "contact": "اتصل بنا",
+    "logout": "تسجيل الخروج",
+    "language": "اللغة",
+    "menu": "القائمة"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語",
+    "ar": "العربية",
+    "bn": "বাংলা",
+    "ta": "தமிழ்"
+  },
+  "common": {
+    "welcome": "مرحباً",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "نجح"
+  }
+}

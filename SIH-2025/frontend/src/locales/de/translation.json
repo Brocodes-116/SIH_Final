@@ -1,0 +1,33 @@
+{
+  "navbar": {
+    "home": "Startseite",
+    "myDashboard": "Mein Dashboard",
+    "authorityDashboard": "Behörden-Dashboard",
+    "tourists": "Touristen",
+    "sosAlerts": "SOS-Alarme",
+    "reports": "Berichte",
+    "about": "Über uns",
+    "contact": "Kontakt",
+    "logout": "Abmelden",
+    "language": "Sprache",
+    "menu": "Menü"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語",
+    "ar": "العربية",
+    "bn": "বাংলা",
+    "ta": "தமிழ்"
+  },
+  "common": {
+    "welcome": "Willkommen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg"
+  }
+}

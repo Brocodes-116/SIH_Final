@@ -1,0 +1,33 @@
+{
+  "navbar": {
+    "home": "হোম",
+    "myDashboard": "আমার ড্যাশবোর্ড",
+    "authorityDashboard": "কর্তৃপক্ষ ড্যাশবোর্ড",
+    "tourists": "পর্যটক",
+    "sosAlerts": "SOS সতর্কতা",
+    "reports": "রিপোর্ট",
+    "about": "সম্পর্কে",
+    "contact": "যোগাযোগ",
+    "logout": "লগ আউট",
+    "language": "ভাষা",
+    "menu": "মেনু"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語",
+    "ar": "العربية",
+    "bn": "বাংলা",
+    "ta": "தமிழ்"
+  },
+  "common": {
+    "welcome": "স্বাগতম",
+    "loading": "লোড হচ্ছে...",
+    "error": "ত্রুটি",
+    "success": "সফল"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "navbar": {
+    "home": "முகப்பு",
+    "myDashboard": "எனது டாஷ்போர்டு",
+    "authorityDashboard": "அதிகார டாஷ்போர்டு",
+    "tourists": "சுற்றுலா பயணிகள்",
+    "sosAlerts": "SOS எச்சரிக்கைகள்",
+    "reports": "அறிக்கைகள்",
+    "about": "பற்றி",
+    "contact": "தொடர்பு",
+    "logout": "வெளியேறு",
+    "language": "மொழி",
+    "menu": "மெனு"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語",
+    "ar": "العربية",
+    "bn": "বাংলা",
+    "ta": "தமிழ்"
+  },
+  "common": {
+    "welcome": "வரவேற்கிறோம்",
+    "loading": "ஏற்றுகிறது...",
+    "error": "பிழை",
+    "success": "வெற்றி"
+  }
+}

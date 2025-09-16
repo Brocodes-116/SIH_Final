@@ -1,0 +1,47 @@
+{
+  "navbar": {
+    "home": "Accueil",
+    "about": "À Propos",
+    "safetyTips": "Conseils de Sécurité",
+    "sos": "SOS",
+    "profile": "Profil",
+    "dashboard": "Tableau de Bord",
+    "incidentReports": "Rapports d'Incident",
+    "touristManagement": "Gestion des Touristes",
+    "logout": "Déconnexion",
+    "language": "Langue",
+    "menu": "Menu"
+  },
+  "app": {
+    "title": "Sécurité Touristique Intelligente",
+    "choosePortal": "Choisissez votre portail",
+    "selectRole": "Sélectionnez votre rôle pour accéder au tableau de bord approprié",
+    "touristPortal": "Portail Touriste",
+    "touristDesc": "Accédez à votre tableau de bord de sécurité et aux fonctionnalités d'urgence",
+    "authorityPortal": "Portail Autorité",
+    "authorityDesc": "Surveillez les touristes et répondez aux urgences",
+    "safetyPriority": "Votre sécurité est notre priorité",
+    "clearData": "Effacer les données enregistrées"
+  },
+  "signup": {
+    "success": "Compte créé avec succès ! Veuillez vous connecter avec vos identifiants."
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語",
+    "ar": "العربية",
+    "bn": "বাংলা",
+    "ta": "தமிழ்"
+  },
+  "common": {
+    "welcome": "Bienvenue",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès"
+  }
+}

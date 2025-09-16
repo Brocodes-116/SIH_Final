@@ -1,0 +1,33 @@
+{
+  "navbar": {
+    "home": "Inicio",
+    "myDashboard": "Mi Panel",
+    "authorityDashboard": "Panel de Autoridad",
+    "tourists": "Turistas",
+    "sosAlerts": "Alertas SOS",
+    "reports": "Informes",
+    "about": "Acerca de",
+    "contact": "Contacto",
+    "logout": "Cerrar Sesión",
+    "language": "Idioma",
+    "menu": "Menú"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語",
+    "ar": "العربية",
+    "bn": "বাংলা",
+    "ta": "தமிழ்"
+  },
+  "common": {
+    "welcome": "Bienvenido",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito"
+  }
+}

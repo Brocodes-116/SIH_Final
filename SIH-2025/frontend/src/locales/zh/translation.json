@@ -1,0 +1,33 @@
+{
+  "navbar": {
+    "home": "首页",
+    "myDashboard": "我的仪表板",
+    "authorityDashboard": "权威仪表板",
+    "tourists": "游客",
+    "sosAlerts": "SOS警报",
+    "reports": "报告",
+    "about": "关于",
+    "contact": "联系",
+    "logout": "登出",
+    "language": "语言",
+    "menu": "菜单"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी",
+    "fr": "Français",
+    "es": "Español",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語",
+    "ar": "العربية",
+    "bn": "বাংলা",
+    "ta": "தமிழ்"
+  },
+  "common": {
+    "welcome": "欢迎",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功"
+  }
+}
